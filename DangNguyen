@@ -1,0 +1,181 @@
+local Players = cloneref(game:GetService("Players"))
+local RunService = cloneref(game:GetService("RunService"))
+local Workspace = cloneref(game:GetService("Workspace"))
+local LocalPlayer = Players.LocalPlayer
+
+local blur = Instance.new("BlurEffect", game:GetService("Lighting"))
+blur.Size = 40
+
+local screenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+screenGui.ResetOnSpawn = false
+
+local label = Instance.new("TextLabel", screenGui)
+label.Size = UDim2.new(1, 0, 1, 0)
+label.BackgroundTransparency = 1
+label.Text = "Make By DNN"
+label.TextColor3 = Color3.fromRGB(255, 0, 255)
+label.TextStrokeTransparency = 0
+label.TextStrokeColor3 = Color3.fromRGB(255, 255, 0)
+label.TextScaled = true
+label.Font = Enum.Font.GothamBlack
+
+task.delay(4, function()
+    blur:Destroy()
+    label:Destroy()
+end)
+
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0, 40, 0, 40)
+toggleBtn.Position = UDim2.new(0, 60, 0, 17)
+toggleBtn.Text = "💩"
+toggleBtn.TextScaled = true
+toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+toggleBtn.TextColor3 = Color3.new(1, 1, 1)
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.AnchorPoint = Vector2.new(0, 0)
+toggleBtn.Draggable = true
+toggleBtn.AutoButtonColor = false
+toggleBtn.BorderSizePixel = 0
+toggleBtn.BackgroundTransparency = 0
+toggleBtn.Parent = screenGui
+toggleBtn.ZIndex = 10
+
+local corner = Instance.new("UICorner", toggleBtn)
+corner.CornerRadius = UDim.new(1, 0)
+
+local connections = {}
+local espRunning = false
+
+local function clearAll()
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v:IsA("Highlight") or v.Name == "ToolNameLabel" or v.Name == "HealthGui" then
+            v:Destroy()
+        end
+    end
+end
+
+local function startScript()
+    local function createToolLabel(tool)
+        if tool:FindFirstChild("ToolNameLabel") then return end
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "ToolNameLabel"
+        billboard.Adornee = tool
+        billboard.Size = UDim2.new(0, 100, 0, 30)
+        billboard.StudsOffset = Vector3.new(0, 2, 0)
+        billboard.AlwaysOnTop = true
+        billboard.MaxDistance = math.huge
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Text = tool.Name
+        label.TextColor3 = Color3.new(1, 1, 1)
+        label.TextScaled = true
+        label.Font = Enum.Font.SourceSansBold
+        label.Parent = billboard
+
+        billboard.Parent = tool
+    end
+
+    local function attachObject(tool)
+        if not tool:FindFirstChildOfClass("Highlight") then
+            local highlight = Instance.new("Highlight")
+            highlight.FillColor = Color3.new(1, 1, 0)
+            highlight.OutlineColor = Color3.new(1, 0, 0)
+            highlight.Parent = tool
+        end
+        createToolLabel(tool)
+    end
+
+    local function createESP(model, outlineColor, fillColor)
+        if model and not model:FindFirstChildOfClass("Highlight") then
+            local highlight = Instance.new("Highlight")
+            highlight.Parent = model
+            highlight.Adornee = model
+            highlight.FillTransparency = 0.75
+            highlight.FillColor = fillColor
+            highlight.OutlineColor = outlineColor
+            highlight.OutlineTransparency = 0
+        end
+    end
+
+    local function createHealthIndicator(char, textColor)
+        local head = char:FindFirstChild("Head")
+        if head and not head:FindFirstChild("HealthGui") then
+            local gui = Instance.new("BillboardGui")
+            gui.Name = "HealthGui"
+            gui.Size = UDim2.new(0, 100, 0, 30)
+            gui.AlwaysOnTop = true
+            gui.MaxDistance = math.huge
+            gui.Parent = head
+
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, 0, 1, 0)
+            label.BackgroundTransparency = 1
+            label.TextScaled = true
+            label.Text = ""
+            label.TextColor3 = textColor
+            label.Font = Enum.Font.SourceSansBold
+            label.Parent = gui
+        end
+    end
+
+    local function updateESP()
+        while espRunning do
+            for _, player in Players:GetPlayers() do
+                local char = player.Character
+                if char then
+                    for _, child in char:GetChildren() do
+                        if child:IsA("Highlight") then
+                            child:Destroy()
+                        end
+                    end
+
+                    local humanoid = char:FindFirstChildOfClass("Humanoid")
+                    if humanoid then
+                        local color = humanoid.MaxHealth > 500 and Color3.new(1, 0, 0) or Color3.new(1, 1, 1)
+                        createESP(char, color, color)
+                        createHealthIndicator(char, color)
+                        local gui = char:FindFirstChild("Head") and char.Head:FindFirstChild("HealthGui")
+                        if gui and gui:FindFirstChildOfClass("TextLabel") then
+                            gui.TextLabel.Text = math.floor(humanoid.Health) .. "/" .. humanoid.MaxHealth
+                        end
+                    end
+                end
+            end
+            task.wait(2)
+        end
+    end
+
+    for _, obj in Workspace:GetDescendants() do
+        if obj:IsA("Tool") then
+            attachObject(obj)
+        end
+    end
+
+    table.insert(connections, Workspace.DescendantAdded:Connect(function(obj)
+        if obj:IsA("Tool") then
+            attachObject(obj)
+        end
+    end))
+
+    espRunning = true
+    task.spawn(updateESP)
+end
+
+local enabled = false
+toggleBtn.MouseButton1Click:Connect(function()
+    enabled = not enabled
+    toggleBtn.BackgroundColor3 = enabled and Color3.fromRGB(255, 105, 180) or Color3.fromRGB(255, 0, 0)
+
+    if enabled then
+        startScript()
+    else
+        espRunning = false
+        clearAll()
+        for _, conn in ipairs(connections) do
+            pcall(function() conn:Disconnect() end)
+        end
+        connections = {}
+    end
+end)
