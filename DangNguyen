@@ -1,13 +1,15 @@
 local Players = cloneref(game:GetService("Players"))
 local RunService = cloneref(game:GetService("RunService"))
 local Workspace = cloneref(game:GetService("Workspace"))
+local Lighting = cloneref(game:GetService("Lighting"))
 local LocalPlayer = Players.LocalPlayer
 
-local blur = Instance.new("BlurEffect", game:GetService("Lighting"))
+local blur = Instance.new("BlurEffect", Lighting)
 blur.Size = 40
 
 local screenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
 screenGui.ResetOnSpawn = false
+screenGui.Name = "DNN_GUI"
 
 local label = Instance.new("TextLabel", screenGui)
 label.Size = UDim2.new(1, 0, 1, 0)
@@ -20,162 +22,194 @@ label.TextScaled = true
 label.Font = Enum.Font.GothamBlack
 
 task.delay(4, function()
-    blur:Destroy()
-    label:Destroy()
+	blur:Destroy()
+	label:Destroy()
 end)
 
-local toggleBtn = Instance.new("TextButton")
+local function showNotify(text)
+	local msg = Instance.new("TextLabel", screenGui)
+	msg.Size = UDim2.new(0.3, 0, 0.05, 0)
+	msg.Position = UDim2.new(0.35, 0, 0.9, 0)
+	msg.BackgroundColor3 = Color3.fromRGB(255, 200, 255)
+	msg.Text = text
+	msg.TextScaled = true
+	msg.TextColor3 = Color3.fromRGB(0, 0, 0)
+	msg.Font = Enum.Font.GothamSemibold
+	msg.BackgroundTransparency = 0.2
+	msg.ZIndex = 20
+	local corner = Instance.new("UICorner", msg)
+	corner.CornerRadius = UDim.new(1, 0)
+	task.delay(2, function()
+		msg:Destroy()
+	end)
+end
+
+local function bigWarning(text)
+	local warn = Instance.new("TextLabel", screenGui)
+	warn.Size = UDim2.new(0.6, 0, 0.2, 0)
+	warn.Position = UDim2.new(0.2, 0, 0.4, 0)
+	warn.BackgroundTransparency = 0.3
+	warn.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
+	warn.Text = text
+	warn.TextScaled = true
+	warn.Font = Enum.Font.GothamBlack
+	warn.TextColor3 = Color3.fromRGB(255, 255, 0)
+	warn.TextStrokeTransparency = 0
+	Instance.new("UICorner", warn).CornerRadius = UDim.new(0.1, 0)
+	task.delay(2.5, function()
+		warn:Destroy()
+	end)
+end
+
+local function addHoverEffect(btn)
+	btn.MouseEnter:Connect(function()
+		btn.BackgroundTransparency = 0.1
+	end)
+	btn.MouseLeave:Connect(function()
+		btn.BackgroundTransparency = 0.3
+	end)
+end
+
+local toggleBtn = Instance.new("TextButton", screenGui)
 toggleBtn.Size = UDim2.new(0, 40, 0, 40)
-toggleBtn.Position = UDim2.new(0, 60, 0, 17)
+toggleBtn.Position = UDim2.new(0, 10, 0, 20)
 toggleBtn.Text = "💩"
 toggleBtn.TextScaled = true
-toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(144, 238, 144)
 toggleBtn.TextColor3 = Color3.new(1, 1, 1)
 toggleBtn.Font = Enum.Font.GothamBold
-toggleBtn.AnchorPoint = Vector2.new(0, 0)
-toggleBtn.Draggable = true
-toggleBtn.AutoButtonColor = false
 toggleBtn.BorderSizePixel = 0
-toggleBtn.BackgroundTransparency = 0
-toggleBtn.Parent = screenGui
 toggleBtn.ZIndex = 10
+toggleBtn.Draggable = true
+addHoverEffect(toggleBtn)
 
-local corner = Instance.new("UICorner", toggleBtn)
-corner.CornerRadius = UDim.new(1, 0)
+local btnCorner = Instance.new("UICorner", toggleBtn)
+btnCorner.CornerRadius = UDim.new(1, 0)
 
-local connections = {}
+local mainFrame = Instance.new("Frame", screenGui)
+mainFrame.Size = UDim2.new(0, 220, 0, 180)
+mainFrame.Position = UDim2.new(0, 60, 0, 20)
+mainFrame.BackgroundColor3 = Color3.fromRGB(255, 182, 193)
+mainFrame.Visible = false
+mainFrame.Active = true
+mainFrame.Draggable = true
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 12)
+
+local title = Instance.new("TextLabel", mainFrame)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Text = "DNN"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.GothamBold
+title.TextScaled = true
+title.BackgroundTransparency = 1
+
+local credit = Instance.new("TextLabel", mainFrame)
+credit.Size = UDim2.new(1, 0, 0, 20)
+credit.Position = UDim2.new(0, 0, 1, -20)
+credit.Text = "Credit: Đặng Nguyên"
+credit.TextColor3 = Color3.fromRGB(0, 0, 0)
+credit.Font = Enum.Font.Gotham
+credit.TextScaled = true
+credit.BackgroundTransparency = 1
+
+local espBtn = Instance.new("TextButton", mainFrame)
+espBtn.Size = UDim2.new(0.8, 0, 0, 30)
+espBtn.Position = UDim2.new(0.1, 0, 0, 40)
+espBtn.Text = "ESP: OFF"
+espBtn.BackgroundColor3 = Color3.fromRGB(255, 105, 180)
+espBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+espBtn.Font = Enum.Font.Gotham
+espBtn.TextScaled = true
+Instance.new("UICorner", espBtn).CornerRadius = UDim.new(0, 8)
+addHoverEffect(espBtn)
+
 local espRunning = false
+local killerList = {}
+local lastSkillUse = 0
 
 local function clearAll()
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v:IsA("Highlight") or v.Name == "ToolNameLabel" or v.Name == "HealthGui" then
-            v:Destroy()
-        end
-    end
+	for _, v in ipairs(Workspace:GetDescendants()) do
+		if v:IsA("Highlight") or v.Name == "ToolNameLabel" or v.Name == "HealthGui" then
+			v:Destroy()
+		end
+	end
 end
 
-local function startScript()
-    local function createToolLabel(tool)
-        if tool:FindFirstChild("ToolNameLabel") then return end
-        local billboard = Instance.new("BillboardGui")
-        billboard.Name = "ToolNameLabel"
-        billboard.Adornee = tool
-        billboard.Size = UDim2.new(0, 100, 0, 30)
-        billboard.StudsOffset = Vector3.new(0, 2, 0)
-        billboard.AlwaysOnTop = true
-        billboard.MaxDistance = math.huge
+local function startESP()
+	espRunning = true
+	task.spawn(function()
+		while espRunning do
+			killerList = {}
+			for _, player in Players:GetPlayers() do
+				local char = player.Character
+				if char then
+					for _, c in char:GetChildren() do if c:IsA("Highlight") then c:Destroy() end end
+					local humanoid = char:FindFirstChildOfClass("Humanoid")
+					if humanoid and char:FindFirstChild("Head") then
+						local fill = Color3.new(1, 1, 1)
+						if humanoid.MaxHealth > 500 then
+							fill = Color3.new(1, 0, 0)
+							table.insert(killerList, char)
+						end
+						local h = Instance.new("Highlight", char)
+						h.Adornee = char
+						h.FillColor = fill
+						h.OutlineColor = fill
+						h.FillTransparency = 0.7
+						h.OutlineTransparency = 0
 
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, 0, 1, 0)
-        label.BackgroundTransparency = 1
-        label.Text = tool.Name
-        label.TextColor3 = Color3.new(1, 1, 1)
-        label.TextScaled = true
-        label.Font = Enum.Font.SourceSansBold
-        label.Parent = billboard
+						local gui = char.Head:FindFirstChild("HealthGui") or Instance.new("BillboardGui", char.Head)
+						gui.Name = "HealthGui"
+						gui.Size = UDim2.new(0, 100, 0, 30)
+						gui.AlwaysOnTop = true
+						gui.MaxDistance = math.huge
 
-        billboard.Parent = tool
-    end
-
-    local function attachObject(tool)
-        if not tool:FindFirstChildOfClass("Highlight") then
-            local highlight = Instance.new("Highlight")
-            highlight.FillColor = Color3.new(1, 1, 0)
-            highlight.OutlineColor = Color3.new(1, 0, 0)
-            highlight.Parent = tool
-        end
-        createToolLabel(tool)
-    end
-
-    local function createESP(model, outlineColor, fillColor)
-        if model and not model:FindFirstChildOfClass("Highlight") then
-            local highlight = Instance.new("Highlight")
-            highlight.Parent = model
-            highlight.Adornee = model
-            highlight.FillTransparency = 0.75
-            highlight.FillColor = fillColor
-            highlight.OutlineColor = outlineColor
-            highlight.OutlineTransparency = 0
-        end
-    end
-
-    local function createHealthIndicator(char, textColor)
-        local head = char:FindFirstChild("Head")
-        if head and not head:FindFirstChild("HealthGui") then
-            local gui = Instance.new("BillboardGui")
-            gui.Name = "HealthGui"
-            gui.Size = UDim2.new(0, 100, 0, 30)
-            gui.AlwaysOnTop = true
-            gui.MaxDistance = math.huge
-            gui.Parent = head
-
-            local label = Instance.new("TextLabel")
-            label.Size = UDim2.new(1, 0, 1, 0)
-            label.BackgroundTransparency = 1
-            label.TextScaled = true
-            label.Text = ""
-            label.TextColor3 = textColor
-            label.Font = Enum.Font.SourceSansBold
-            label.Parent = gui
-        end
-    end
-
-    local function updateESP()
-        while espRunning do
-            for _, player in Players:GetPlayers() do
-                local char = player.Character
-                if char then
-                    for _, child in char:GetChildren() do
-                        if child:IsA("Highlight") then
-                            child:Destroy()
-                        end
-                    end
-
-                    local humanoid = char:FindFirstChildOfClass("Humanoid")
-                    if humanoid then
-                        local color = humanoid.MaxHealth > 500 and Color3.new(1, 0, 0) or Color3.new(1, 1, 1)
-                        createESP(char, color, color)
-                        createHealthIndicator(char, color)
-                        local gui = char:FindFirstChild("Head") and char.Head:FindFirstChild("HealthGui")
-                        if gui and gui:FindFirstChildOfClass("TextLabel") then
-                            gui.TextLabel.Text = math.floor(humanoid.Health) .. "/" .. humanoid.MaxHealth
-                        end
-                    end
-                end
-            end
-            task.wait(2)
-        end
-    end
-
-    for _, obj in Workspace:GetDescendants() do
-        if obj:IsA("Tool") then
-            attachObject(obj)
-        end
-    end
-
-    table.insert(connections, Workspace.DescendantAdded:Connect(function(obj)
-        if obj:IsA("Tool") then
-            attachObject(obj)
-        end
-    end))
-
-    espRunning = true
-    task.spawn(updateESP)
+						local label = gui:FindFirstChildOfClass("TextLabel") or Instance.new("TextLabel", gui)
+						label.Size = UDim2.new(1, 0, 1, 0)
+						label.BackgroundTransparency = 1
+						label.TextColor3 = fill
+						label.TextScaled = true
+						label.Font = Enum.Font.SourceSansBold
+						label.Text = math.floor(humanoid.Health).."/"..humanoid.MaxHealth
+					end
+				end
+			end
+			task.wait(2)
+		end
+	end)
 end
 
-local enabled = false
+RunService.Stepped:Connect(function()
+	for _, char in ipairs(killerList) do
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if hum then
+			for _, track in ipairs(hum:GetPlayingAnimationTracks()) do
+				if (track.Name:lower():match("skill") or track.Length > 1.5) and track.IsPlaying then
+					if tick() - lastSkillUse > 3 then
+						lastSkillUse = tick()
+						showNotify("[!] KILLER đang dùng kỹ năng!")
+						bigWarning("[!!] KILLER ĐANG DÙNG SKILL!")
+					end
+				end
+			end
+		end
+	end
+end)
+
+espBtn.MouseButton1Click:Connect(function()
+	espRunning = not espRunning
+	if espRunning then
+		espBtn.Text = "ESP: ON"
+		showNotify("ESP BẬT RỒI!")
+		startESP()
+	else
+		espBtn.Text = "ESP: OFF"
+		showNotify("ESP TẮT RỒI!")
+		clearAll()
+	end
+end)
+
 toggleBtn.MouseButton1Click:Connect(function()
-    enabled = not enabled
-    toggleBtn.BackgroundColor3 = enabled and Color3.fromRGB(255, 105, 180) or Color3.fromRGB(255, 0, 0)
-
-    if enabled then
-        startScript()
-    else
-        espRunning = false
-        clearAll()
-        for _, conn in ipairs(connections) do
-            pcall(function() conn:Disconnect() end)
-        end
-        connections = {}
-    end
+	mainFrame.Visible = not mainFrame.Visible
+	showNotify(mainFrame.Visible and "Menu bật" or "Menu tắt")
 end)
